@@ -2,11 +2,15 @@
 
 A small, audio-reactive equalizer for the [Omarchy](https://omarchy.org/) bar:
 4 bars driven by [cava](https://github.com/karlstav/cava), tinted in four shades
-of the theme's accent colour, plus a scrolling now-playing text. Works with any
+of a theme colour (accent by default), plus a scrolling now-playing text. Works with any
 MPRIS player (Spotify, browsers, mpv, VLC, cliamp, …) via `playerctl`.
 
 Left click opens a small player card with album art and previous / play-pause / next.
 The gear in the card opens its settings.
+
+<div align="center">
+    <img src="preview.png" alt="Music EQ in the bar, the player card and the settings view" width="700">
+</div>
 
 ## Install
 
