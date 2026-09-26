@@ -94,6 +94,22 @@ or edit the entry directly:
 
 Remove a key from the entry to go back to its default.
 
+### Several monitors
+
+Every monitor gets its own bar, and all of them share this one entry. The text
+settings (`showText`, `maxLabelWidth`, `scrollSpeed`) can be overridden per
+monitor under `screens`, keyed by output name (`hyprctl monitors` lists them),
+e.g. a narrower label on a laptop panel:
+
+```json
+"screens": {
+  "eDP-1": { "maxLabelWidth": 60 }
+}
+```
+
+The TEXT section of the settings view shows which monitor it applies to and
+saves there; monitors without an override use the shared values.
+
 With several players open (e.g. a browser tab and Spotify), `player: "spotify,%any"`
 prefers Spotify and falls back to anything else; `ignorePlayers: "firefox"` keeps
 browser videos out of the widget.

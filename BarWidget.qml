@@ -23,9 +23,12 @@ BarWidget {
   readonly property string player: String(setting("player", "")).trim()
   readonly property string ignorePlayers: String(setting("ignorePlayers", "")).trim()
   readonly property int noiseGate: Math.max(0, Math.min(100, Number(setting("noiseGate", 14)) || 0))
-  readonly property real maxLabelWidth: Math.max(40, Number(setting("maxLabelWidth", 160)) || 160)
-  readonly property real scrollSpeed: Math.max(5, Number(setting("scrollSpeed", 40)) || 40)
-  readonly property bool showText: String(setting("showText", true)) !== "false"
+  // Text settings can differ per monitor (a narrow laptop panel has less
+  // room than a wide external screen): screenSetting() reads them from
+  // `screens.<output name>` first and falls back to the shared value.
+  readonly property real maxLabelWidth: Math.max(40, Number(screenSetting("maxLabelWidth", 160)) || 160)
+  readonly property real scrollSpeed: Math.max(5, Number(screenSetting("scrollSpeed", 40)) || 40)
+  readonly property bool showText: String(screenSetting("showText", true)) !== "false"
   readonly property string colorSetting: String(setting("color", "accent")).trim()
   readonly property color barColor: resolveColor(colorSetting)
 
@@ -168,6 +171,33 @@ BarWidget {
     var values = {}
     values[key] = value
     persistSettings(values)
+  }
+
+  // Output name of the monitor this copy of the widget sits on ("eDP-1").
+  // Every monitor gets its own bar and so its own widget instance, but they
+  // all share one shell.json entry.
+  readonly property string screenName: QsWindow.window && QsWindow.window.screen ? String(QsWindow.window.screen.name || "") : ""
+
+  function screenSetting(name, fallback) {
+    var screens = setting("screens", null)
+    var own = screens && screenName !== "" ? screens[screenName] : null
+    if (own && own[name] !== undefined && own[name] !== null) return own[name]
+    return setting(name, fallback)
+  }
+
+  function setScreenSetting(key, value) {
+    if (screenName === "") {
+      setSetting(key, value)
+      return
+    }
+    var old = setting("screens", null) || {}
+    var screens = {}
+    for (var name in old) screens[name] = old[name]
+    var own = {}
+    for (var existing in (old[screenName] || {})) own[existing] = old[screenName][existing]
+    own[key] = value
+    screens[screenName] = own
+    setSetting("screens", screens)
   }
 
   function toggleIgnored(name) {
@@ -770,7 +800,7 @@ BarWidget {
       }
 
       PanelSeparator { foreground: root.bar.foreground }
-      PanelSectionHeader { text: "TEXT"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
+      PanelSectionHeader { text: root.screenName !== "" ? "TEXT · " + root.screenName : "TEXT"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
 
       Item {
         width: parent.width
@@ -791,7 +821,7 @@ BarWidget {
           anchors.verticalCenter: parent.verticalCenter
           checked: root.showText
           foreground: root.bar.foreground
-          onToggled: root.setSetting("showText", !root.showText)
+          onToggled: root.setScreenSetting("showText", !root.showText)
         }
       }
 
@@ -827,7 +857,7 @@ BarWidget {
           step: 10
           integer: true
           value: root.maxLabelWidth
-          onReleased: function(v) { root.setSetting("maxLabelWidth", Math.round(v)) }
+          onReleased: function(v) { root.setScreenSetting("maxLabelWidth", Math.round(v)) }
         }
       }
 
@@ -863,7 +893,7 @@ BarWidget {
           step: 5
           integer: true
           value: root.scrollSpeed
-          onReleased: function(v) { root.setSetting("scrollSpeed", Math.round(v)) }
+          onReleased: function(v) { root.setScreenSetting("scrollSpeed", Math.round(v)) }
         }
       }
     }
