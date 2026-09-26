@@ -52,6 +52,11 @@ Move it with:
 omarchy bar move io.github.taiku666.music-eq --section right
 ```
 
+On a narrow screen (a laptop panel at high scaling) with a busy bar, the text can
+run into neighbouring widgets such as the clock. Lower the max width in the
+settings view, turn the text off, or, with several monitors, give just that
+monitor a narrower label (see [Several monitors](#several-monitors)).
+
 ## Configure
 
 Click the gear in the player card for the settings view: pick the player to
@@ -76,7 +81,7 @@ or edit the entry directly:
   "ignorePlayers": "firefox",
   "color": "accent",
   "showText": true,
-  "maxLabelWidth": 160,
+  "maxLabelWidth": 100,
   "scrollSpeed": 40,
   "noiseGate": 14
 }
@@ -88,7 +93,7 @@ or edit the entry directly:
 | `ignorePlayers` | empty | Comma-separated players never to follow (`playerctl --ignore-player`), e.g. `firefox,chromium` |
 | `color` | `accent` | Base colour of the bars, drawn in 4 shades: a theme role (`accent`, `foreground`, `urgent`, `muted`), a theme hue (`red`, `orange`, `yellow`, `green`, `cyan`, `blue`, `magenta`, taken from the theme's named colours or its terminal colours), a terminal colour `color0`–`color15`, or a hex colour. Names follow theme switches, hex stays fixed. The settings view shows accent, foreground and each hue the theme defines, every colour once |
 | `showText` | `true` | `false` shows only the bars |
-| `maxLabelWidth` | `160` | Max width of the text in px; longer titles scroll |
+| `maxLabelWidth` | `100` | Max width of the text in px; longer titles scroll |
 | `scrollSpeed` | `40` | Scroll speed in px/s |
 | `noiseGate` | `14` | Levels below this (0–100) are shown flat, so quiet passages don't jitter |
 

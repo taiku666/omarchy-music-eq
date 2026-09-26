@@ -26,7 +26,7 @@ BarWidget {
   // Text settings can differ per monitor (a narrow laptop panel has less
   // room than a wide external screen): screenSetting() reads them from
   // `screens.<output name>` first and falls back to the shared value.
-  readonly property real maxLabelWidth: Math.max(40, Number(screenSetting("maxLabelWidth", 160)) || 160)
+  readonly property real maxLabelWidth: Math.max(40, Number(screenSetting("maxLabelWidth", 100)) || 100)
   readonly property real scrollSpeed: Math.max(5, Number(screenSetting("scrollSpeed", 40)) || 40)
   readonly property bool showText: String(screenSetting("showText", true)) !== "false"
   readonly property string colorSetting: String(setting("color", "accent")).trim()

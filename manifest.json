@@ -23,7 +23,7 @@
       "ignorePlayers": "",
       "color": "accent",
       "showText": true,
-      "maxLabelWidth": 160,
+      "maxLabelWidth": 100,
       "scrollSpeed": 40,
       "noiseGate": 14
     },
@@ -63,7 +63,7 @@
         "min": 40,
         "max": 600,
         "step": 10,
-        "defaultValue": 160,
+        "defaultValue": 100,
         "description": "Longer titles scroll inside this width."
       },
       {
