@@ -133,13 +133,33 @@ BarWidget {
 
   // A changed player filter only reaches playerctl on a fresh process, so
   // drop the old state and restart both watchers with the new arguments.
-  onPlayerArgsChanged: {
-    status = "Stopped"; title = ""; artist = ""; artUrl = ""
+  // The commands are rebuilt here rather than left to their bindings: this
+  // handler can run before those bindings update, and the one-shot query
+  // would then start with the old filter and report the just-ignored
+  // player as Playing again.
+  onPlayerArgsChanged: Qt.callLater(root.restartWatchers)
+
+  function metadataCommand(follow) {
+    return ["playerctl"].concat(root.playerArgs, follow ? ["--follow"] : [], ["metadata", "--format", root.metadataFormat])
+  }
+
+  function restartWatchers() {
     initProc.running = false
-    initProc.running = true
     followProc.running = false
+    clearMedia()
+    initProc.command = metadataCommand(false)
+    followProc.command = metadataCommand(true)
+    // Start the fresh query a moment later so any line the killed processes
+    // still had in flight lands before it, not after it.
+    initRestart.restart()
     followRestart.restart()
   }
+
+  function clearMedia() {
+    status = "Stopped"; title = ""; artist = ""; artUrl = ""
+  }
+
+  Timer { id: initRestart; interval: 200; repeat: false; onTriggered: initProc.running = true }
 
   readonly property string metadataFormat:
     "{{status}}" + root.fieldSep + "{{artist}}" + root.fieldSep + "{{title}}" + root.fieldSep + "{{mpris:artUrl}}"
@@ -194,9 +214,12 @@ BarWidget {
   // collapsed until a full `omarchy restart shell`.
   Process {
     id: initProc
-    command: ["playerctl"].concat(root.playerArgs, ["metadata", "--format", root.metadataFormat])
+    command: root.metadataCommand(false)
     running: true
     stdout: SplitParser { onRead: function(line) { root.applyMetadataLine(line) } }
+    // Non-zero means no (unignored) player; that is a real "stopped" answer
+    // and has to override whatever state a previous filter left behind.
+    onExited: function(exitCode) { if (exitCode !== 0) root.clearMedia() }
   }
 
   // Long-running MPRIS watcher: prints a new line on every status/track
@@ -204,7 +227,7 @@ BarWidget {
   // active player disappeared).
   Process {
     id: followProc
-    command: ["playerctl"].concat(root.playerArgs, ["--follow", "metadata", "--format", root.metadataFormat])
+    command: root.metadataCommand(true)
     running: true
     stdout: SplitParser { onRead: function(line) { root.applyMetadataLine(line) } }
     onExited: followRestart.start()
