@@ -2,11 +2,13 @@
   "schemaVersion": 1,
   "id": "io.github.taiku666.music-eq",
   "name": "Music EQ",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "taiku666",
   "license": "MIT",
   "description": "Small 4-bar audio-reactive equalizer (cava) with a scrolling now-playing text for any MPRIS player (playerctl).",
-  "kinds": ["bar-widget"],
+  "kinds": [
+    "bar-widget"
+  ],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },
@@ -16,7 +18,82 @@
     "category": "Media",
     "allowMultiple": false,
     "defaultSection": "right",
-    "aliases": ["music", "media", "equalizer", "visualizer", "cava", "player"]
+    "defaults": {
+      "player": "",
+      "ignorePlayers": "",
+      "color": "accent",
+      "showText": true,
+      "maxLabelWidth": 160,
+      "scrollSpeed": 40,
+      "noiseGate": 14
+    },
+    "schema": [
+      {
+        "key": "player",
+        "type": "string",
+        "label": "Player",
+        "defaultValue": "",
+        "description": "Which MPRIS player to follow, passed to playerctl --player. A name (spotify), a priority list (spotify,firefox) or %any. Empty follows the first available player. See playerctl -l."
+      },
+      {
+        "key": "ignorePlayers",
+        "type": "string",
+        "label": "Ignore players",
+        "defaultValue": "",
+        "description": "Comma-separated players never to follow, passed to playerctl --ignore-player, e.g. firefox,chromium."
+      },
+      {
+        "key": "color",
+        "type": "string",
+        "label": "Bar colour",
+        "defaultValue": "accent",
+        "description": "Base colour for the 4 bars (drawn in 4 shades of it): a theme role like accent, foreground, urgent, muted, or a hex colour like #ff8800."
+      },
+      {
+        "key": "showText",
+        "type": "boolean",
+        "label": "Show now-playing text",
+        "defaultValue": true,
+        "description": "Off shows only the bars."
+      },
+      {
+        "key": "maxLabelWidth",
+        "type": "integer",
+        "label": "Max text width (px)",
+        "min": 40,
+        "max": 600,
+        "step": 10,
+        "defaultValue": 160,
+        "description": "Longer titles scroll inside this width."
+      },
+      {
+        "key": "scrollSpeed",
+        "type": "integer",
+        "label": "Scroll speed (px/s)",
+        "min": 5,
+        "max": 200,
+        "step": 5,
+        "defaultValue": 40
+      },
+      {
+        "key": "noiseGate",
+        "type": "integer",
+        "label": "Noise gate",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "defaultValue": 14,
+        "description": "Levels below this (0-100) are shown as flat, so quiet passages don't jitter."
+      }
+    ],
+    "aliases": [
+      "music",
+      "media",
+      "equalizer",
+      "visualizer",
+      "cava",
+      "player"
+    ]
   },
   "repository": "https://github.com/taiku666/omarchy-music-eq"
 }

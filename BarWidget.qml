@@ -15,6 +15,26 @@ BarWidget {
   id: root
   moduleName: "io.github.taiku666.music-eq"
 
+  // User settings from this widget's shell.json entry (see manifest schema).
+  // `player` / `ignorePlayers` are handed to playerctl as-is, so they accept
+  // its full syntax: a name ("spotify"), a comma-separated priority list
+  // ("spotify,firefox") and "%any" as a wildcard. Empty follows whatever
+  // playerctl picks.
+  readonly property string player: String(setting("player", "")).trim()
+  readonly property string ignorePlayers: String(setting("ignorePlayers", "")).trim()
+  readonly property int noiseGate: Math.max(0, Math.min(100, Number(setting("noiseGate", 14)) || 0))
+  readonly property real maxLabelWidth: Math.max(40, Number(setting("maxLabelWidth", 160)) || 160)
+  readonly property real scrollSpeed: Math.max(5, Number(setting("scrollSpeed", 40)) || 40)
+  readonly property bool showText: String(setting("showText", true)) !== "false"
+  readonly property color barColor: Color.flatColor(String(setting("color", "accent")), Color.accent)
+
+  readonly property var playerArgs: {
+    var args = []
+    if (player !== "") args.push("--player=" + player)
+    if (ignorePlayers !== "") args.push("--ignore-player=" + ignorePlayers)
+    return args
+  }
+
   readonly property string fieldSep: ""
 
   property string status: "Stopped"
@@ -25,7 +45,6 @@ BarWidget {
   readonly property bool isPlaying: status === "Playing"
   readonly property bool hasMedia: title !== "" || artist !== ""
   readonly property string nowPlayingText: (isPlaying && hasMedia) ? (title + (artist ? "  ·  " + artist : "")) : "Nothing playing"
-  property real maxLabelWidth: 160
 
   property real level0: 0
   property real level1: 0
@@ -42,7 +61,7 @@ BarWidget {
   }
 
   function runPlayerctl(args) {
-    ctlProc.command = ["playerctl"].concat(args)
+    ctlProc.command = ["playerctl"].concat(root.playerArgs, args)
     ctlProc.running = true
   }
 
@@ -53,6 +72,16 @@ BarWidget {
   onIsPlayingChanged: {
     cavaProc.running = isPlaying
     if (!isPlaying) resetLevels()
+  }
+
+  // A changed player filter only reaches playerctl on a fresh process, so
+  // drop the old state and restart both watchers with the new arguments.
+  onPlayerArgsChanged: {
+    status = "Stopped"; title = ""; artist = ""; artUrl = ""
+    initProc.running = false
+    initProc.running = true
+    followProc.running = false
+    followRestart.restart()
   }
 
   readonly property string metadataFormat:
@@ -78,7 +107,7 @@ BarWidget {
   // collapsed until a full `omarchy restart shell`.
   Process {
     id: initProc
-    command: ["playerctl", "metadata", "--format", root.metadataFormat]
+    command: ["playerctl"].concat(root.playerArgs, ["metadata", "--format", root.metadataFormat])
     running: true
     stdout: SplitParser { onRead: function(line) { root.applyMetadataLine(line) } }
   }
@@ -88,7 +117,7 @@ BarWidget {
   // active player disappeared).
   Process {
     id: followProc
-    command: ["playerctl", "--follow", "metadata", "--format", root.metadataFormat]
+    command: ["playerctl"].concat(root.playerArgs, ["--follow", "metadata", "--format", root.metadataFormat])
     running: true
     stdout: SplitParser { onRead: function(line) { root.applyMetadataLine(line) } }
     onExited: followRestart.start()
@@ -96,11 +125,9 @@ BarWidget {
 
   Timer { id: followRestart; interval: 1500; repeat: false; onTriggered: followProc.running = true }
 
-  // Values below this (0-100 cava scale) are treated as silence/noise floor
-  // and clamped to exactly 0, so quiet passages rest flat instead of
+  // Values below noiseGate (0-100 cava scale) are treated as silence/noise
+  // floor and clamped to exactly 0, so quiet passages rest flat instead of
   // constantly re-triggering the height animation for imperceptible jitter.
-  readonly property int noiseGate: 14
-
   function gated(raw) {
     var n = Number(raw)
     if (!isFinite(n) || n < root.noiseGate) return 0
@@ -158,10 +185,10 @@ BarWidget {
           y: eq.barMaxHeight - height
           height: eq.barMinHeight + (eq.barMaxHeight - eq.barMinHeight) * modelData
           opacity: root.isPlaying ? 1 : 0.35
-          color: index === 0 ? Qt.lighter(Color.accent, 1.5)
-               : index === 1 ? Qt.lighter(Color.accent, 1.2)
-               : index === 2 ? Color.accent
-               : Qt.darker(Color.accent, 1.3)
+          color: index === 0 ? Qt.lighter(root.barColor, 1.5)
+               : index === 1 ? Qt.lighter(root.barColor, 1.2)
+               : index === 2 ? root.barColor
+               : Qt.darker(root.barColor, 1.3)
 
           Behavior on height {
             NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
@@ -179,7 +206,7 @@ BarWidget {
       height: labelText.implicitHeight
       clip: true
       anchors.verticalCenter: parent.verticalCenter
-      visible: !root.vertical && root.isPlaying && root.hasMedia
+      visible: root.showText && !root.vertical && root.isPlaying && root.hasMedia
 
       Text {
         id: labelText
@@ -196,7 +223,7 @@ BarWidget {
         NumberAnimation on x {
           running: labelText.needsScroll && !root.popupOpen && !root.vertical
           loops: Animation.Infinite
-          duration: Math.max(6000, labelText.implicitWidth * 25)
+          duration: Math.max(6000, (scrollClip.width + labelText.implicitWidth) / root.scrollSpeed * 1000)
           from: scrollClip.width
           to: -labelText.implicitWidth
           easing.type: Easing.Linear

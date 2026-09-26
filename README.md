@@ -39,8 +39,46 @@ omarchy bar move io.github.taiku666.music-eq --section right
 
 ## Configure
 
-There are no settings in `shell.json` yet. Bar behaviour is tuned in the bundled
-[`cava.conf`](cava.conf):
+Settings live on the widget's `~/.config/omarchy/shell.json` entry and apply
+immediately. Set them with `omarchy bar set`:
+
+```sh
+omarchy bar set io.github.taiku666.music-eq player spotify
+omarchy bar set io.github.taiku666.music-eq color '#ff8800'
+```
+
+or edit the entry directly:
+
+```json
+{
+  "id": "io.github.taiku666.music-eq",
+  "player": "spotify,%any",
+  "ignorePlayers": "firefox",
+  "color": "accent",
+  "showText": true,
+  "maxLabelWidth": 160,
+  "scrollSpeed": 40,
+  "noiseGate": 14
+}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `player` | empty | Which player to follow, passed to `playerctl --player`. A name (`spotify`), a priority list (`spotify,firefox`), `%any` as a wildcard. Empty follows the first available player. `playerctl -l` lists names |
+| `ignorePlayers` | empty | Comma-separated players never to follow (`playerctl --ignore-player`), e.g. `firefox,chromium` |
+| `color` | `accent` | Base colour of the bars, drawn in 4 shades: a theme role (`accent`, `foreground`, `urgent`, `muted`) or a hex colour |
+| `showText` | `true` | `false` shows only the bars |
+| `maxLabelWidth` | `160` | Max width of the text in px; longer titles scroll |
+| `scrollSpeed` | `40` | Scroll speed in px/s |
+| `noiseGate` | `14` | Levels below this (0–100) are shown flat, so quiet passages don't jitter |
+
+Remove a key from the entry to go back to its default.
+
+With several players open (e.g. a browser tab and Spotify), `player: "spotify,%any"`
+prefers Spotify and falls back to anything else; `ignorePlayers: "firefox"` keeps
+browser videos out of the widget.
+
+The audio analysis itself is tuned in the bundled [`cava.conf`](cava.conf):
 
 | Key | Value | Meaning |
 |---|---|---|
@@ -48,9 +86,6 @@ There are no settings in `shell.json` yet. Bar behaviour is tuned in the bundled
 | `framerate` | `30` | Updates per second |
 | `autosens` / `sensitivity` | `0` / `15` | Fixed gain, so the bars don't sit at maximum all the time |
 | `monstercat` / `noise_reduction` | `1` / `0.77` | Smoothing |
-
-Values below 14 (of 100) are clamped to 0 in the widget (`noiseGate` in
-`BarWidget.qml`) so quiet passages rest flat instead of jittering.
 
 ## How it works
 
@@ -70,7 +105,8 @@ Omarchy (Quattro or later), `cava`, `playerctl`, and a player that supports MPRI
 ## What runs, and as whom
 
 Omarchy plugins run inside the shell process, unsandboxed, as your user. This one
-runs only `playerctl` (read metadata, send play/pause/next/previous) and `cava`
+runs only `playerctl` (read metadata, send play/pause/next/previous, limited to
+the players you configure) and `cava`
 (read the audio output). Album art is loaded from the URL the player reports.
 Nothing is written to disk.
 
