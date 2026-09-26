@@ -430,9 +430,31 @@ BarWidget {
   // showTooltip() call is dropped.
   readonly property bool tooltipHovered: visible && mouseArea.containsMouse && !popupOpen
 
+  // Tooltip: the track on top, the mouse actions below. The bar centres
+  // each tooltip line, so the action lines are padded to one width to
+  // read as an aligned block in the bar's monospace font.
+  readonly property var mouseHints: [
+    ["Left click", "player card"],
+    ["Middle click", "play / pause"],
+    ["Right click", "next track"],
+    ["Scroll", "previous / next"]
+  ]
+  readonly property string tooltipText: {
+    var labelWidth = 0, lineWidth = 0, i
+    for (i = 0; i < mouseHints.length; i++) labelWidth = Math.max(labelWidth, mouseHints[i][0].length)
+    var lines = mouseHints.map(function(h) {
+      var line = h[0]
+      while (line.length < labelWidth + 2) line += " "
+      return line + h[1]
+    })
+    for (i = 0; i < lines.length; i++) lineWidth = Math.max(lineWidth, lines[i].length)
+    lines = lines.map(function(l) { while (l.length < lineWidth) l += " "; return l })
+    return nowPlayingText + "\n\n" + lines.join("\n")
+  }
+
   // Keep an open tooltip in step with the track instead of freezing the
   // text from the moment the pointer entered.
-  onNowPlayingTextChanged: if (tooltipHovered && bar) bar.showTooltip(root, nowPlayingText)
+  onTooltipTextChanged: if (tooltipHovered && bar) bar.showTooltip(root, tooltipText)
 
   MouseArea {
     id: mouseArea
@@ -454,7 +476,7 @@ BarWidget {
       if (wheel.angleDelta.y > 0) root.runPlayerctl(["previous"])
       else if (wheel.angleDelta.y < 0) root.runPlayerctl(["next"])
     }
-    onEntered: if (root.bar) root.bar.showTooltip(root, root.nowPlayingText)
+    onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltipText)
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }
 

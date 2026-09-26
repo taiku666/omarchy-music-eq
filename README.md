@@ -26,7 +26,7 @@ Remove with `omarchy plugin remove io.github.taiku666.music-eq`.
 
 | Action | Result |
 |---|---|
-| Hover | Title · artist tooltip |
+| Hover | Tooltip with title · artist and a reminder of these mouse actions |
 | Left click | Player card (art, title, artist, previous / play-pause / next, ⚙ settings) |
 | Middle click | Play / pause |
 | Right click | Next track |
