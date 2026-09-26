@@ -425,7 +425,17 @@ BarWidget {
     }
   }
 
+  // The bar only shows a tooltip while its target reports tooltipHovered
+  // (the same contract WidgetButton implements); without it every
+  // showTooltip() call is dropped.
+  readonly property bool tooltipHovered: visible && mouseArea.containsMouse && !popupOpen
+
+  // Keep an open tooltip in step with the track instead of freezing the
+  // text from the moment the pointer entered.
+  onNowPlayingTextChanged: if (tooltipHovered && bar) bar.showTooltip(root, nowPlayingText)
+
   MouseArea {
+    id: mouseArea
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
