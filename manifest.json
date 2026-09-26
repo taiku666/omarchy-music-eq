@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.music-eq",
+  "name": "Music EQ",
+  "version": "1.0.0",
+  "author": "user",
+  "license": "MIT",
+  "description": "Small 4-bar audio-reactive equalizer with a scrolling now-playing text, using the built-in media service and cava.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Music EQ",
+    "description": "4-bar audio-reactive equalizer (cava) with a scrolling now-playing text. Click opens a small player panel.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
