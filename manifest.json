@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "user.music-eq",
+  "id": "io.github.taiku666.music-eq",
   "name": "Music EQ",
   "version": "1.0.0",
-  "author": "user",
+  "author": "taiku666",
   "license": "MIT",
-  "description": "Small 4-bar audio-reactive equalizer with a scrolling now-playing text, using the built-in media service and cava.",
+  "description": "Small 4-bar audio-reactive equalizer (cava) with a scrolling now-playing text for any MPRIS player (playerctl).",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
@@ -15,6 +15,8 @@
     "description": "4-bar audio-reactive equalizer (cava) with a scrolling now-playing text. Click opens a small player panel.",
     "category": "Media",
     "allowMultiple": false,
-    "defaultSection": "right"
-  }
+    "defaultSection": "right",
+    "aliases": ["music", "media", "equalizer", "visualizer", "cava", "player"]
+  },
+  "repository": "https://github.com/taiku666/omarchy-music-eq"
 }

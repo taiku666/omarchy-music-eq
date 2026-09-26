@@ -13,7 +13,7 @@ import qs.Ui
 // the trusted bar and its clones — so this talks to MPRIS directly instead.
 BarWidget {
   id: root
-  moduleName: "user.music-eq"
+  moduleName: "io.github.taiku666.music-eq"
 
   readonly property string fieldSep: ""
 
