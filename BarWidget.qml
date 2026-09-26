@@ -54,7 +54,64 @@ BarWidget {
   readonly property string cavaConfigPath: Qt.resolvedUrl("cava.conf").toString().replace(/^file:\/\//, "")
 
   property bool popupOpen: false
+  property bool settingsOpen: false
   function close() { popupOpen = false }
+
+  onPopupOpenChanged: if (!popupOpen) settingsOpen = false
+  onSettingsOpenChanged: if (settingsOpen) refreshPlayers()
+
+  // Names from `playerctl -l`, with the ".instance…" suffix some players
+  // (browsers) add stripped — playerctl matches the bare name to every
+  // instance, and the bare name is what users recognise.
+  property var availablePlayers: []
+
+  readonly property var ignoredList: ignorePlayers === "" ? []
+    : ignorePlayers.split(",").map(function(p) { return p.trim() }).filter(function(p) { return p !== "" })
+
+  // Options for the player picker: Auto, every running player, and the
+  // current setting even if that player isn't running right now (or is a
+  // hand-written priority list), so the picker always shows what's active.
+  readonly property var playerOptions: {
+    var opts = [{ value: "", label: "Auto" }]
+    var seen = {}
+    for (var i = 0; i < availablePlayers.length; i++) {
+      opts.push({ value: availablePlayers[i], label: availablePlayers[i] })
+      seen[availablePlayers[i]] = true
+    }
+    if (player !== "" && !seen[player]) opts.push({ value: player, label: player })
+    return opts
+  }
+
+  function refreshPlayers() {
+    listProc.running = false
+    listProc.running = true
+  }
+
+  // Same write path as the host's own settings editing: update the inline
+  // shell.json entry, which re-injects `settings` and re-evaluates every
+  // setting() binding above.
+  function persistSettings(values) {
+    var entry = { id: root.moduleName }
+    for (var existing in root.settings) if (existing !== "id") entry[existing] = root.settings[existing]
+    for (var key in values) entry[key] = values[key]
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  function setSetting(key, value) {
+    var values = {}
+    values[key] = value
+    persistSettings(values)
+  }
+
+  function toggleIgnored(name) {
+    var list = ignoredList.slice()
+    var i = list.indexOf(name)
+    if (i >= 0) list.splice(i, 1)
+    else list.push(name)
+    setSetting("ignorePlayers", list.join(","))
+  }
 
   function resetLevels() {
     level0 = 0; level1 = 0; level2 = 0; level3 = 0
@@ -96,8 +153,38 @@ BarWidget {
     root.artUrl = parts.length > 3 ? (parts[3] || "") : ""
   }
 
+  // `omarchy-shell io.github.taiku666.music-eq <function>`, for keybindings.
+  IpcHandler {
+    target: root.moduleName
+
+    function toggle(): void { root.popupOpen = !root.popupOpen }
+    function open(): void { root.popupOpen = true }
+    function close(): void { root.popupOpen = false }
+    function settings(): void { root.popupOpen = true; root.settingsOpen = true }
+    function playPause(): void { root.runPlayerctl(["play-pause"]) }
+    function next(): void { root.runPlayerctl(["next"]) }
+    function previous(): void { root.runPlayerctl(["previous"]) }
+  }
+
   // Fire-and-forget control commands (play-pause / next / previous).
   Process { id: ctlProc }
+
+  Process {
+    id: listProc
+    command: ["playerctl", "-l"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var names = []
+        var lines = text.split("\n")
+        for (var i = 0; i < lines.length; i++) {
+          var name = lines[i].trim().replace(/\.instance.*$/, "")
+          if (name !== "" && names.indexOf(name) < 0) names.push(name)
+        }
+        root.availablePlayers = names
+      }
+    }
+  }
 
   // One-shot query so the widget already has correct title/artist (and
   // therefore correct label width) on its very first layout pass. Without
@@ -262,12 +349,17 @@ BarWidget {
     owner: root
     open: root.popupOpen
     contentWidth: popup.fittedContentWidth(Style.space(300))
-    contentHeight: popup.fittedContentHeight(column.implicitHeight)
+    contentHeight: popup.fittedContentHeight(root.settingsOpen ? settingsView.implicitHeight : playerView.implicitHeight)
 
+    // Player view: art, title/artist, transport controls. The gear in the
+    // top-right corner swaps the card to the settings view below.
     Column {
-      id: column
-      anchors.fill: parent
+      id: playerView
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
       spacing: Style.space(10)
+      visible: !root.settingsOpen
 
       Row {
         spacing: Style.space(10)
@@ -301,7 +393,7 @@ BarWidget {
 
         Column {
           spacing: Style.space(4)
-          width: parent.width - Style.space(66)
+          width: parent.width - Style.space(66) - settingsButton.width
 
           Text {
             textFormat: Text.PlainText
@@ -324,6 +416,16 @@ BarWidget {
             width: parent.width
             visible: text !== ""
           }
+        }
+
+        Button {
+          id: settingsButton
+          iconText: "󰒓"
+          tooltipText: "Settings"
+          foreground: root.bar.foreground
+          horizontalPadding: Style.spacing.controlPaddingY
+          verticalPadding: Style.spacing.controlPaddingY
+          onClicked: root.settingsOpen = true
         }
       }
 
@@ -360,6 +462,293 @@ BarWidget {
           enabled: root.hasMedia
           opacity: enabled ? 1.0 : 0.4
           onClicked: root.runPlayerctl(["next"])
+        }
+      }
+    }
+
+    // Settings view. Everything is pointer-driven (the popup card never
+    // takes keyboard focus), and every change is written straight to this
+    // widget's shell.json entry via persistSettings().
+    Column {
+      id: settingsView
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      spacing: Style.space(10)
+      visible: root.settingsOpen
+
+      Row {
+        width: parent.width
+        spacing: Style.space(6)
+
+        Button {
+          id: backButton
+          iconText: "󰁍"
+          tooltipText: "Back"
+          foreground: root.bar.foreground
+          horizontalPadding: Style.spacing.controlPaddingY
+          verticalPadding: Style.spacing.controlPaddingY
+          onClicked: root.settingsOpen = false
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Music EQ settings"
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.subtitle
+          font.bold: true
+        }
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
+      PanelSectionHeader { text: "PLAYER"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
+
+      Flow {
+        width: parent.width
+        spacing: Style.space(6)
+
+        Repeater {
+          model: root.playerOptions
+
+          Button {
+            required property var modelData
+            text: modelData.label
+            fontSize: Style.font.bodySmall
+            fontFamily: root.bar.fontFamily
+            foreground: root.bar.foreground
+            bordered: true
+            active: root.player === modelData.value
+            onClicked: root.setSetting("player", modelData.value)
+          }
+        }
+      }
+
+      Text {
+        width: parent.width
+        visible: root.availablePlayers.length === 0
+        text: "No players running. Start one to pick it here."
+        color: Qt.darker(root.bar.foreground, 1.4)
+        font.family: root.bar.fontFamily
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
+      }
+
+      // Ignoring only matters when following "Auto"; with a fixed player
+      // the other players are never looked at anyway.
+      Column {
+        width: parent.width
+        spacing: Style.space(6)
+        visible: root.player === "" && root.availablePlayers.length > 0
+
+        Text {
+          width: parent.width
+          text: "Ignore while on Auto"
+          color: Qt.darker(root.bar.foreground, 1.4)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        Repeater {
+          model: root.availablePlayers
+
+          Item {
+            required property var modelData
+            width: parent.width
+            height: ignoreSwitch.implicitHeight
+
+            Text {
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              text: modelData
+              color: root.bar.foreground
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            ToggleSwitch {
+              id: ignoreSwitch
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.ignoredList.indexOf(modelData) >= 0
+              foreground: root.bar.foreground
+              onToggled: root.toggleIgnored(modelData)
+            }
+          }
+        }
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
+      PanelSectionHeader { text: "BARS"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
+
+      // Colour swatches: theme roles keep the widget following theme
+      // switches. A hand-set hex colour shows up as an extra swatch.
+      Row {
+        spacing: Style.space(8)
+
+        Repeater {
+          model: {
+            var roles = ["accent", "foreground", "urgent", "muted"]
+            var current = String(root.setting("color", "accent")).trim()
+            if (roles.indexOf(current.toLowerCase()) < 0 && current !== "") roles.push(current)
+            return roles
+          }
+
+          Rectangle {
+            required property var modelData
+            readonly property bool selected: String(root.setting("color", "accent")).trim().toLowerCase() === String(modelData).toLowerCase()
+            width: Style.space(22)
+            height: width
+            radius: width / 2
+            color: Color.flatColor(modelData, Color.accent)
+            // Faint ring on unselected swatches so dark roles (muted) stay
+            // visible against the card background.
+            border.width: selected ? Style.space(2) : 1
+            border.color: selected ? root.bar.foreground : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.3)
+
+            MouseArea {
+              anchors.fill: parent
+              anchors.margins: -Style.space(3)
+              cursorShape: Qt.PointingHandCursor
+              hoverEnabled: true
+              onClicked: root.setSetting("color", modelData)
+              onEntered: if (root.bar) root.bar.showTooltip(parent, modelData)
+              onExited: if (root.bar) root.bar.hideTooltip(parent)
+            }
+          }
+        }
+      }
+
+      Item {
+        width: parent.width
+        height: gateSlider.height + gateLabel.height + Style.space(4)
+
+        Text {
+          id: gateLabel
+          anchors.left: parent.left
+          text: "Noise gate"
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        Text {
+          anchors.right: parent.right
+          text: Math.round(gateSlider.dragging ? gateSlider.liveValue : root.noiseGate)
+          color: Qt.darker(root.bar.foreground, 1.3)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        PanelSlider {
+          id: gateSlider
+          bar: root.bar
+          anchors.bottom: parent.bottom
+          width: parent.width
+          minimum: 0
+          maximum: 50
+          step: 1
+          integer: true
+          value: root.noiseGate
+          onReleased: function(v) { root.setSetting("noiseGate", Math.round(v)) }
+        }
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
+      PanelSectionHeader { text: "TEXT"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
+
+      Item {
+        width: parent.width
+        height: textSwitch.implicitHeight
+
+        Text {
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Show now-playing text"
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        ToggleSwitch {
+          id: textSwitch
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          checked: root.showText
+          foreground: root.bar.foreground
+          onToggled: root.setSetting("showText", !root.showText)
+        }
+      }
+
+      Item {
+        width: parent.width
+        height: widthSlider.height + widthLabel.height + Style.space(4)
+        visible: root.showText
+
+        Text {
+          id: widthLabel
+          anchors.left: parent.left
+          text: "Max width"
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        Text {
+          anchors.right: parent.right
+          text: Math.round(widthSlider.dragging ? widthSlider.liveValue : root.maxLabelWidth) + " px"
+          color: Qt.darker(root.bar.foreground, 1.3)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        PanelSlider {
+          id: widthSlider
+          bar: root.bar
+          anchors.bottom: parent.bottom
+          width: parent.width
+          minimum: 40
+          maximum: 600
+          step: 10
+          integer: true
+          value: root.maxLabelWidth
+          onReleased: function(v) { root.setSetting("maxLabelWidth", Math.round(v)) }
+        }
+      }
+
+      Item {
+        width: parent.width
+        height: speedSlider.height + speedLabel.height + Style.space(4)
+        visible: root.showText
+
+        Text {
+          id: speedLabel
+          anchors.left: parent.left
+          text: "Scroll speed"
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        Text {
+          anchors.right: parent.right
+          text: Math.round(speedSlider.dragging ? speedSlider.liveValue : root.scrollSpeed) + " px/s"
+          color: Qt.darker(root.bar.foreground, 1.3)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        PanelSlider {
+          id: speedSlider
+          bar: root.bar
+          anchors.bottom: parent.bottom
+          width: parent.width
+          minimum: 5
+          maximum: 200
+          step: 5
+          integer: true
+          value: root.scrollSpeed
+          onReleased: function(v) { root.setSetting("scrollSpeed", Math.round(v)) }
         }
       }
     }

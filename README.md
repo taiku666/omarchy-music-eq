@@ -6,6 +6,7 @@ of the theme's accent colour, plus a scrolling now-playing text. Works with any
 MPRIS player (Spotify, browsers, mpv, VLC, cliamp, …) via `playerctl`.
 
 Left click opens a small player card with album art and previous / play-pause / next.
+The gear in the card opens its settings.
 
 ## Install
 
@@ -22,7 +23,7 @@ Remove with `omarchy plugin remove io.github.taiku666.music-eq`.
 | Action | Result |
 |---|---|
 | Hover | Title · artist tooltip |
-| Left click | Player card (art, title, artist, previous / play-pause / next) |
+| Left click | Player card (art, title, artist, previous / play-pause / next, ⚙ settings) |
 | Middle click | Play / pause |
 | Right click | Next track |
 | Scroll up / down | Previous / next track |
@@ -30,6 +31,16 @@ Remove with `omarchy plugin remove io.github.taiku666.music-eq`.
 - Playing: bars move with the music, the title scrolls if it is longer than the label.
 - Paused or nothing playing: bars rest flat and dimmed, the text is hidden so the
   widget shrinks to just the bars.
+
+### Keybindings
+
+The widget answers `omarchy-shell io.github.taiku666.music-eq <command>` with
+`toggle`, `open`, `close`, `settings`, `playPause`, `next` and `previous`. For
+example, in `~/.config/hypr/bindings.lua`:
+
+```lua
+o.bind("SUPER + ALT + M", "Music EQ card", "omarchy-shell io.github.taiku666.music-eq toggle")
+```
 
 Move it with:
 
@@ -39,8 +50,12 @@ omarchy bar move io.github.taiku666.music-eq --section right
 
 ## Configure
 
-Settings live on the widget's `~/.config/omarchy/shell.json` entry and apply
-immediately. Set them with `omarchy bar set`:
+Click the gear in the player card for the settings view: pick the player to
+follow (or Auto, with per-player ignore switches), the bar colour, noise gate,
+and the text options. Changes apply immediately.
+
+The settings live on the widget's `~/.config/omarchy/shell.json` entry, so they
+can also be set from a terminal with `omarchy bar set`:
 
 ```sh
 omarchy bar set io.github.taiku666.music-eq player spotify
