@@ -47,7 +47,7 @@
         "type": "string",
         "label": "Bar colour",
         "defaultValue": "accent",
-        "description": "Base colour for the 4 bars (drawn in 4 shades of it): a theme role like accent, foreground, urgent, muted, or a hex colour like #ff8800."
+        "description": "Base colour for the 4 bars (drawn in 4 shades of it): a theme role (accent, foreground, urgent, muted), a theme terminal colour color0-color15, or a hex colour like #ff8800."
       },
       {
         "key": "showText",

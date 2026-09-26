@@ -26,7 +26,29 @@ BarWidget {
   readonly property real maxLabelWidth: Math.max(40, Number(setting("maxLabelWidth", 160)) || 160)
   readonly property real scrollSpeed: Math.max(5, Number(setting("scrollSpeed", 40)) || 40)
   readonly property bool showText: String(setting("showText", true)) !== "false"
-  readonly property color barColor: Color.flatColor(String(setting("color", "accent")), Color.accent)
+  readonly property string colorSetting: String(setting("color", "accent")).trim()
+  readonly property color barColor: resolveColor(colorSetting)
+
+  // color0..color15 from the active theme's colors.toml. Color only exposes
+  // the named roles (accent, foreground, urgent, muted), so the numbered
+  // palette is read here. Reassigned as a whole so bindings re-evaluate.
+  property var themePalette: ({})
+
+  function resolveColor(name) {
+    var key = String(name || "").toLowerCase()
+    if (themePalette[key]) return themePalette[key]
+    return Color.flatColor(name, Color.accent)
+  }
+
+  function loadPalette(raw) {
+    var palette = {}
+    var lines = String(raw || "").split("\n")
+    for (var i = 0; i < lines.length; i++) {
+      var match = lines[i].match(/^\s*(color\d+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
+      if (match) palette[match[1]] = match[2]
+    }
+    themePalette = palette
+  }
 
   readonly property var playerArgs: {
     var args = []
@@ -171,6 +193,24 @@ BarWidget {
     root.artist = parts[1] || ""
     root.title = parts[2] || ""
     root.artUrl = parts.length > 3 ? (parts[3] || "") : ""
+  }
+
+  FileView {
+    id: paletteFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    printErrors: false
+    onLoaded: root.loadPalette(text())
+    onLoadFailed: root.loadPalette("")
+  }
+
+  // Omarchy pushes theme switches over IPC instead of watching colors.toml,
+  // so follow the same signal: any change of the foundational colours means
+  // a new theme, and the numbered palette is re-read with it.
+  Connections {
+    target: Color
+    function onAccentChanged() { paletteFile.reload() }
+    function onForegroundChanged() { paletteFile.reload() }
+    function onBackgroundChanged() { paletteFile.reload() }
   }
 
   // `omarchy-shell io.github.taiku666.music-eq <function>`, for keybindings.
@@ -604,39 +644,44 @@ BarWidget {
       PanelSeparator { foreground: root.bar.foreground }
       PanelSectionHeader { text: "BARS"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
 
-      // Colour swatches: theme roles keep the widget following theme
-      // switches. A hand-set hex colour shows up as an extra swatch.
-      Row {
+      // Colour swatches: the named theme roles, then the theme's 16 terminal
+      // colours (normal row, bright row). Only the name is stored, so the
+      // bars follow theme switches. A hand-set hex colour gets its own swatch.
+      Column {
         spacing: Style.space(8)
 
-        Repeater {
-          model: {
-            var roles = ["accent", "foreground", "urgent", "muted"]
-            var current = String(root.setting("color", "accent")).trim()
-            if (roles.indexOf(current.toLowerCase()) < 0 && current !== "") roles.push(current)
-            return roles
+        Row {
+          spacing: Style.space(8)
+
+          Repeater {
+            model: {
+              var names = ["accent", "foreground", "urgent", "muted"]
+              var current = root.colorSetting
+              var known = names.indexOf(current.toLowerCase()) >= 0 || /^color([0-9]|1[0-5])$/i.test(current)
+              if (!known && current !== "") names.push(current)
+              return names
+            }
+            ColorSwatch {
+              required property var modelData
+              colorName: modelData
+            }
           }
+        }
 
-          Rectangle {
+        Repeater {
+          model: [0, 8]
+
+          Row {
+            id: paletteRow
             required property var modelData
-            readonly property bool selected: String(root.setting("color", "accent")).trim().toLowerCase() === String(modelData).toLowerCase()
-            width: Style.space(22)
-            height: width
-            radius: width / 2
-            color: Color.flatColor(modelData, Color.accent)
-            // Faint ring on unselected swatches so dark roles (muted) stay
-            // visible against the card background.
-            border.width: selected ? Style.space(2) : 1
-            border.color: selected ? root.bar.foreground : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.3)
+            spacing: Style.space(8)
 
-            MouseArea {
-              anchors.fill: parent
-              anchors.margins: -Style.space(3)
-              cursorShape: Qt.PointingHandCursor
-              hoverEnabled: true
-              onClicked: root.setSetting("color", modelData)
-              onEntered: if (root.bar) root.bar.showTooltip(parent, modelData)
-              onExited: if (root.bar) root.bar.hideTooltip(parent)
+            Repeater {
+              model: 8
+              ColorSwatch {
+                required property int index
+                colorName: "color" + (paletteRow.modelData + index)
+              }
             }
           }
         }
@@ -774,6 +819,31 @@ BarWidget {
           onReleased: function(v) { root.setSetting("scrollSpeed", Math.round(v)) }
         }
       }
+    }
+  }
+
+  component ColorSwatch: Rectangle {
+    id: swatch
+    property string colorName: ""
+    readonly property bool selected: root.colorSetting.toLowerCase() === colorName.toLowerCase()
+    readonly property color swatchColor: root.resolveColor(colorName)
+    width: Style.space(22)
+    height: width
+    radius: width / 2
+    color: swatchColor
+    // Faint ring on unselected swatches so dark colours (muted, color0)
+    // stay visible against the card background.
+    border.width: selected ? Style.space(2) : 1
+    border.color: selected ? root.bar.foreground : Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.3)
+
+    MouseArea {
+      anchors.fill: parent
+      anchors.margins: -Style.space(3)
+      cursorShape: Qt.PointingHandCursor
+      hoverEnabled: true
+      onClicked: root.setSetting("color", swatch.colorName)
+      onEntered: if (root.bar) root.bar.showTooltip(swatch, swatch.colorName + "  " + String(swatch.swatchColor))
+      onExited: if (root.bar) root.bar.hideTooltip(swatch)
     }
   }
 }
