@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.taiku666.music-eq",
   "name": "Music EQ",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "taiku666",
   "license": "MIT",
   "description": "Small 4-bar audio-reactive equalizer (cava) with a scrolling now-playing text for any MPRIS player (playerctl).",
