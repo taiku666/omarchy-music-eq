@@ -29,25 +29,68 @@ BarWidget {
   readonly property string colorSetting: String(setting("color", "accent")).trim()
   readonly property color barColor: resolveColor(colorSetting)
 
-  // color0..color15 from the active theme's colors.toml. Color only exposes
-  // the named roles (accent, foreground, urgent, muted), so the numbered
-  // palette is read here. Reassigned as a whole so bindings re-evaluate.
+  // Every `key = "#rrggbb"` from the active theme's colors.toml. Color only
+  // exposes the named roles (accent, foreground, urgent, muted), so hues are
+  // read here. Reassigned as a whole so bindings re-evaluate.
   property var themePalette: ({})
 
+  // Themes name their hues in one of two ways: directly (`red = …`) or as
+  // terminal colours (`color1 = …`). Each hue lists the named key first and
+  // the ANSI slot as fallback.
+  readonly property var hueSources: ({
+    red: ["red", "color1"],
+    orange: ["orange"],
+    yellow: ["yellow", "color3"],
+    green: ["green", "color2"],
+    cyan: ["cyan", "color6"],
+    blue: ["blue", "color4"],
+    magenta: ["magenta", "color5"]
+  })
+  readonly property var roleNames: ["accent", "foreground", "urgent", "muted", "background"]
+
+  // Theme value for a name, or "" if the theme doesn't define it.
+  function themeValue(name) {
+    var key = String(name || "").trim().toLowerCase()
+    if (roleNames.indexOf(key) >= 0) return String(Color.flatColor(key, Color.accent))
+    var sources = hueSources[key] || [key]
+    for (var i = 0; i < sources.length; i++)
+      if (themePalette[sources[i]]) return themePalette[sources[i]]
+    return ""
+  }
+
   function resolveColor(name) {
-    var key = String(name || "").toLowerCase()
-    if (themePalette[key]) return themePalette[key]
-    return Color.flatColor(name, Color.accent)
+    var value = themeValue(name)
+    return value !== "" ? value : Color.flatColor(name, Color.accent)
   }
 
   function loadPalette(raw) {
     var palette = {}
     var lines = String(raw || "").split("\n")
     for (var i = 0; i < lines.length; i++) {
-      var match = lines[i].match(/^\s*(color\d+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
-      if (match) palette[match[1]] = match[2]
+      var match = lines[i].match(/^\s*([A-Za-z0-9_]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
+      if (match) palette[match[1].toLowerCase()] = match[2]
     }
     themePalette = palette
+  }
+
+  // Swatches for the settings view: accent, foreground, then the hues this
+  // theme actually defines, each colour only once (many themes reuse
+  // accent as blue, or foreground as a hue). The current setting always
+  // stays pickable, even if it is a duplicate, a hex value or an old
+  // colorN name.
+  readonly property var swatchNames: {
+    var names = []
+    var seen = {}
+    var candidates = ["accent", "foreground", "red", "orange", "yellow", "green", "cyan", "blue", "magenta"]
+    for (var i = 0; i < candidates.length; i++) {
+      var value = themeValue(candidates[i]).toLowerCase()
+      if (value === "" || seen[value]) continue
+      seen[value] = true
+      names.push(candidates[i])
+    }
+    var current = colorSetting.toLowerCase()
+    if (current !== "" && names.indexOf(current) < 0) names.push(colorSetting)
+    return names
   }
 
   readonly property var playerArgs: {
@@ -644,45 +687,17 @@ BarWidget {
       PanelSeparator { foreground: root.bar.foreground }
       PanelSectionHeader { text: "BARS"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
 
-      // Colour swatches: the named theme roles, then the theme's 16 terminal
-      // colours (normal row, bright row). Only the name is stored, so the
-      // bars follow theme switches. A hand-set hex colour gets its own swatch.
-      Column {
+      // Colour swatches (see swatchNames). Only the name is stored, so the
+      // bars follow theme switches.
+      Flow {
+        width: parent.width
         spacing: Style.space(8)
 
-        Row {
-          spacing: Style.space(8)
-
-          Repeater {
-            model: {
-              var names = ["accent", "foreground", "urgent", "muted"]
-              var current = root.colorSetting
-              var known = names.indexOf(current.toLowerCase()) >= 0 || /^color([0-9]|1[0-5])$/i.test(current)
-              if (!known && current !== "") names.push(current)
-              return names
-            }
-            ColorSwatch {
-              required property var modelData
-              colorName: modelData
-            }
-          }
-        }
-
         Repeater {
-          model: [0, 8]
-
-          Row {
-            id: paletteRow
+          model: root.swatchNames
+          ColorSwatch {
             required property var modelData
-            spacing: Style.space(8)
-
-            Repeater {
-              model: 8
-              ColorSwatch {
-                required property int index
-                colorName: "color" + (paletteRow.modelData + index)
-              }
-            }
+            colorName: modelData
           }
         }
       }

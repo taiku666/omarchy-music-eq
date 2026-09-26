@@ -56,7 +56,7 @@ omarchy bar move io.github.taiku666.music-eq --section right
 
 Click the gear in the player card for the settings view: pick the player to
 follow (or Auto, with per-player ignore switches), the bar colour from the
-theme's palette, noise gate,
+theme's colours, noise gate,
 and the text options. Changes apply immediately.
 
 The settings live on the widget's `~/.config/omarchy/shell.json` entry, so they
@@ -86,7 +86,7 @@ or edit the entry directly:
 |---|---|---|
 | `player` | empty | Which player to follow, passed to `playerctl --player`. A name (`spotify`), a priority list (`spotify,firefox`), `%any` as a wildcard. Empty follows the first available player. `playerctl -l` lists names |
 | `ignorePlayers` | empty | Comma-separated players never to follow (`playerctl --ignore-player`), e.g. `firefox,chromium` |
-| `color` | `accent` | Base colour of the bars, drawn in 4 shades: a theme role (`accent`, `foreground`, `urgent`, `muted`), one of the theme's terminal colours `color0`–`color15`, or a hex colour. Names follow theme switches, hex stays fixed |
+| `color` | `accent` | Base colour of the bars, drawn in 4 shades: a theme role (`accent`, `foreground`, `urgent`, `muted`), a theme hue (`red`, `orange`, `yellow`, `green`, `cyan`, `blue`, `magenta`, taken from the theme's named colours or its terminal colours), a terminal colour `color0`–`color15`, or a hex colour. Names follow theme switches, hex stays fixed. The settings view shows accent, foreground and each hue the theme defines, every colour once |
 | `showText` | `true` | `false` shows only the bars |
 | `maxLabelWidth` | `160` | Max width of the text in px; longer titles scroll |
 | `scrollSpeed` | `40` | Scroll speed in px/s |
