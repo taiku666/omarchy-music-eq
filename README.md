@@ -141,7 +141,7 @@ third-party widgets, which is why this plugin talks to MPRIS directly.
 
 ## Requirements
 
-Omarchy (Quattro or later), `cava`, `playerctl`, and a player that supports MPRIS.
+Omarchy 4.5.0 or later (the shell colour singleton was renamed `Color` → `OColor` in 4.5.0rc1; older versions need release 1.3.5 or earlier), `cava`, `playerctl`, and a player that supports MPRIS.
 
 ## What runs, and as whom
 

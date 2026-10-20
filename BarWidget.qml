@@ -54,7 +54,7 @@ BarWidget {
   // Theme value for a name, or "" if the theme doesn't define it.
   function themeValue(name) {
     var key = String(name || "").trim().toLowerCase()
-    if (roleNames.indexOf(key) >= 0) return String(Color.flatColor(key, Color.accent))
+    if (roleNames.indexOf(key) >= 0) return String(OColor.flatColor(key, OColor.accent))
     var sources = hueSources[key] || [key]
     for (var i = 0; i < sources.length; i++)
       if (themePalette[sources[i]]) return themePalette[sources[i]]
@@ -63,7 +63,7 @@ BarWidget {
 
   function resolveColor(name) {
     var value = themeValue(name)
-    return value !== "" ? value : Color.flatColor(name, Color.accent)
+    return value !== "" ? value : OColor.flatColor(name, OColor.accent)
   }
 
   function loadPalette(raw) {
@@ -280,7 +280,7 @@ BarWidget {
   // so follow the same signal: any change of the foundational colours means
   // a new theme, and the numbered palette is re-read with it.
   Connections {
-    target: Color
+    target: OColor
     function onAccentChanged() { paletteFile.reload() }
     function onForegroundChanged() { paletteFile.reload() }
     function onBackgroundChanged() { paletteFile.reload() }
@@ -435,7 +435,7 @@ BarWidget {
         id: labelText
         textFormat: Text.PlainText
         text: root.nowPlayingText
-        color: root.bar ? root.bar.barForeground : Color.foreground
+        color: root.bar ? root.bar.barForeground : OColor.foreground
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.font.body
         anchors.verticalCenter: parent.verticalCenter
@@ -537,8 +537,8 @@ BarWidget {
           width: Style.space(56)
           height: Style.space(56)
           radius: Style.spacing.labelGap
-          color: Style.normalFillFor(root.bar.foreground, Color.accent)
-          borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+          color: Style.normalFillFor(root.bar.foreground, OColor.accent)
+          borderSpec: Border.controlSpec("normal", root.bar.foreground, OColor.accent)
 
           Image {
             anchors.fill: parent
