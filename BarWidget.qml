@@ -265,7 +265,17 @@ BarWidget {
     root.status = parts[0] || "Stopped"
     root.artist = parts[1] || ""
     root.title = parts[2] || ""
-    root.artUrl = parts.length > 3 ? (parts[3] || "") : ""
+    root.artUrl = safeArtUrl(parts.length > 3 ? parts[3] : "")
+  }
+
+  // The player controls this URL, and the shell would fetch and decode it.
+  // Only local files are accepted, so a player can't make the shell download
+  // anything.
+  function safeArtUrl(url) {
+    var u = String(url || "")
+    if (u.indexOf("file:///") === 0) return u
+    if (u.charAt(0) === "/") return "file://" + encodeURI(u)
+    return ""
   }
 
   FileView {
@@ -545,6 +555,8 @@ BarWidget {
             anchors.margins: Style.space(2)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
+            // Caps the decoded bitmap, whatever size the file claims.
+            sourceSize: Qt.size(Style.space(112), Style.space(112))
             source: root.artUrl
             visible: source !== ""
           }

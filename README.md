@@ -148,7 +148,7 @@ Omarchy 4.5.0 or later (the shell colour singleton was renamed `Color` → `OCol
 Omarchy plugins run inside the shell process, unsandboxed, as your user. This one
 runs only `playerctl` (read metadata, send play/pause/next/previous, limited to
 the players you configure) and `cava`
-(read the audio output). Album art is loaded from the URL the player reports.
+(read the audio output). Album art is shown only when the player reports a local file; remote (`http`/`https`) art URLs are ignored, so the shell never downloads anything on a player's behalf.
 Nothing is written to disk.
 
 ## Troubleshooting
